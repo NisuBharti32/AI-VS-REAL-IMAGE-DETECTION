@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI vs Real Image Detector</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 16px;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            background-attachment: fixed;
+            color: #eaeaf2;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 480px;
+            background: rgba(255, 255, 255, 0.06);
+            
+            -webkit-backdrop-filter: blur(18px);
+             backdrop-filter: blur(18px);  
+            
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            padding: 36px 30px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+        }
+
+        .title {
+            text-align: center;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0 0 8px;
+            background: linear-gradient(90deg, #8ec5fc, #e0c3fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 14px;
+            color: #b8b8c9;
+            margin: 0 0 28px;
+            line-height: 1.5;
+        }
+
+        .dropzone {
+            display: block;
+            position: relative;
+            border: 2px dashed rgba(255, 255, 255, 0.25);
+            border-radius: 14px;
+            padding: 28px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition:
+                border-color 0.25s ease,
+                background 0.25s ease,
+                transform 0.15s ease;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .dropzone:hover,
+        .dropzone.dragover {
+            border-color: #8ec5fc;
+            background: rgba(142, 197, 252, 0.08);
+        }
+
+        .dropzone:active {
+            transform: scale(0.99);
+        }
+
+        .dropzone-icon {
+            font-size: 34px;
+            margin-bottom: 10px;
+            opacity: 0.85;
+        }
+
+        .dropzone-text {
+            font-size: 14px;
+            color: #d3d3e0;
+        }
+
+        .dropzone-hint {
+            font-size: 12px;
+            color: #8c8ca0;
+            margin-top: 4px;
+        }
+
+        .preview-img {
+            display: none;
+            max-width: 100%;
+            max-height: 220px;
+            border-radius: 10px;
+            margin: 0 auto;
+            object-fit: contain;
+        }
+
+        .predict-btn {
+            width: 100%;
+            margin-top: 20px;
+            padding: 13px;
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            color: #10101c;
+            background: linear-gradient(90deg, #8ec5fc, #e0c3fc);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition:
+                transform 0.15s ease,
+                box-shadow 0.25s ease,
+                opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .predict-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(142, 197, 252, 0.35);
+        }
+
+        .predict-btn:active {
+            transform: translateY(0);
+        }
+
+        .predict-btn:disabled {
+            opacity: 0.75;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(16, 16, 28, 0.35);
+            border-top-color: #10101c;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .result-section {
+            margin-top: 26px;
+            padding: 22px;
+            border-radius: 14px;
+            text-align: center;
+            animation: fadeIn 0.4s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-real {
+            background: rgba(46, 204, 113, 0.12);
+            box-shadow: 0 0 0 1px rgba(46, 204, 113, 0.35) inset;
+        }
+
+        .result-fake {
+            background: rgba(231, 76, 60, 0.12);
+            box-shadow: 0 0 0 1px rgba(231, 76, 60, 0.35) inset;
+        }
+
+        .result-label {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            margin-bottom: 14px;
+        }
+
+        .result-real .result-label {
+            color: #2ecc71;
+        }
+
+        .result-fake .result-label {
+            color: #e74c3c;
+        }
+
+        .confidence-value {
+            font-size: 15px;
+            color: #eaeaf2;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .confidence-bar-track {
+            width: 100%;
+            height: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            overflow: hidden;
+        }
+
+        .confidence-bar-fill {
+            height: 100%;
+            width: 0;
+            border-radius: 999px;
+            transition: width 0.6s ease;
+        }
+
+        .result-real .confidence-bar-fill {
+            background: linear-gradient(90deg, #2ecc71, #58e39d);
+        }
+
+        .result-fake .confidence-bar-fill {
+            background: linear-gradient(90deg, #e74c3c, #ff8a7a);
+        }
+
+        .file-meta {
+            margin-top: 14px;
+            font-size: 12px;
+            color: #9c9cae;
+            word-break: break-all;
+        }
+
+        .error-box {
+            margin-top: 22px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            background: rgba(231, 76, 60, 0.12);
+            border: 1px solid rgba(231, 76, 60, 0.35);
+            color: #ff9d90;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        footer {
+            margin-top: 26px;
+            text-align: center;
+            font-size: 12px;
+            color: #75758a;
+            letter-spacing: 0.3px;
+        }
+
+        @media (max-width: 420px) {
+            .card {
+                padding: 28px 20px;
+            }
+
+            .title {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card">
+
+        <h1 class="title">AI vs Real Image Detector</h1>
+
+        <p class="subtitle">
+            Upload an image and the system will analyze it to determine whether it's a real
+            photograph or AI-generated.
+        </p>
+
+        <form method="POST" enctype="multipart/form-data" id="upload-form">
+
+            {% csrf_token %}
+
+            <label for="image-input" class="dropzone" id="dropzone">
+
+                <div id="dropzone-placeholder">
+                    <div class="dropzone-icon">📷</div>
+
+                    <div class="dropzone-text">
+                        Click to upload or drag an image here
+                    </div>
+
+                    <div class="dropzone-hint">
+                        JPG or PNG
+                    </div>
+                </div>
+
+                <img
+                    id="preview-img"
+                    class="preview-img"
+                    alt="Selected image preview"
+                >
+
+                <input
+                    type="file"
+                    id="image-input"
+                    name="image"
+                    accept="image/*"
+                    required
+                    hidden
+                >
+
+            </label>
+
+            <button
+                type="submit"
+                class="predict-btn"
+                id="predict-btn"
+            >
+                <span id="btn-label">Predict Image</span>
+                <span class="spinner" id="btn-spinner"></span>
+            </button>
+
+        </form>
+
+        {% if success %}
+
+            <div
+                class="result-section
+                {% if prediction == 'REAL' %}
+                    result-real
+                {% elif prediction == 'AI-GENERATED' %}
+                    result-fake
+                {% endif %}"
+            >
+
+                <div class="result-label">
+                    {{ prediction }}
+                </div>
+
+                <div class="confidence-value">
+                    Confidence: {{ confidence }}%
+                </div>
+
+                <div class="confidence-bar-track">
+                    <div
+                        class="confidence-bar-fill"
+                        data-confidence="{{ confidence }}"
+                    ></div>
+                </div>
+
+                <div class="file-meta">
+                    {{ filename }} &bull; {{ filesize }} bytes
+                </div>
+
+            </div>
+
+        {% endif %}
+
+        {% if error %}
+
+            <div class="error-box">
+                {{ error }}
+            </div>
+
+        {% endif %}
+
+        <footer>
+            Powered by ResNet18
+        </footer>
+
+    </div>
+
+    <script>
+
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('image-input');
+        const previewImg = document.getElementById('preview-img');
+        const placeholder = document.getElementById('dropzone-placeholder');
+
+        const form = document.getElementById('upload-form');
+        const predictBtn = document.getElementById('predict-btn');
+        const btnLabel = document.getElementById('btn-label');
+        const btnSpinner = document.getElementById('btn-spinner');
+
+        const confidenceBar =
+            document.querySelector('.confidence-bar-fill');
+
+        if (confidenceBar) {
+            confidenceBar.style.width =
+                confidenceBar.dataset.confidence + '%';
+        }
+
+        function showPreview(file) {
+
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+
+                previewImg.src = e.target.result;
+                previewImg.style.display = 'block';
+                placeholder.style.display = 'none';
+
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        fileInput.addEventListener('change', function () {
+
+            if (fileInput.files && fileInput.files[0]) {
+                showPreview(fileInput.files[0]);
+            }
+
+        });
+
+        ['dragover', 'dragenter'].forEach(function (evt) {
+
+            dropzone.addEventListener(evt, function (e) {
+
+                e.preventDefault();
+                dropzone.classList.add('dragover');
+
+            });
+
+        });
+
+        ['dragleave', 'drop'].forEach(function (evt) {
+
+            dropzone.addEventListener(evt, function (e) {
+
+                e.preventDefault();
+                dropzone.classList.remove('dragover');
+
+            });
+
+        });
+
+        dropzone.addEventListener('drop', function (e) {
+
+            const file = e.dataTransfer.files[0];
+
+            if (file) {
+
+                fileInput.files = e.dataTransfer.files;
+                showPreview(file);
+
+            }
+
+        });
+
+        form.addEventListener('submit', function () {
+
+            predictBtn.disabled = true;
+            btnLabel.textContent = 'Analyzing...';
+            btnSpinner.style.display = 'inline-block';
+
+        });
+
+    </script>
+
+</body>
+</html>
+ 
